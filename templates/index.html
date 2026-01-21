@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tijuana Ruta Segura - Planeador de Rutas</title>
+    
+    <!-- CDN de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Leaflet Routing Machine CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+
+    <style>
+        /* Estilos personalizados para el contenedor del mapa */
+        #map {
+            height: calc(100vh - 180px);
+            z-index: 1;
+        }
+        /* Ajuste para que el panel de instrucciones sea legible */
+        .leaflet-routing-container {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: ui-sans-serif, system-ui, sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans">
+
+    <!-- Navegación Superior -->
+    <nav class="bg-indigo-700 text-white p-4 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 7m0 10V7" />
+                </svg>
+                Tijuana Route Master
+            </h1>
+            <div class="text-sm hidden sm:block">OpenStreetMap + Leaflet</div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-4 flex flex-col lg:flex-row gap-4">
+        
+        <!-- Panel Lateral de Controles -->
+        <div class="w-full lg:w-1/4 flex flex-col gap-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="font-semibold text-lg mb-3">Controles de Ruta</h2>
+                <p class="text-sm text-slate-500 mb-4">Haz clic en el mapa para añadir puntos de inicio, destino o paradas intermedias.</p>
+                
+                <div class="space-y-2">
+                    <button id="clearBtn" class="w-full bg-rose-500 hover:bg-rose-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                        Limpiar Ruta
+                    </button>
+                    
+                    <button id="centerTj" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                        Re-centrar Tijuana
+                    </button>
+                </div>
+            </div>
+
+            <div id="stats-panel" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hidden">
+                <h3 class="font-bold text-slate-700 uppercase text-xs tracking-wider mb-2">Información de Trayecto</h3>
+                <div class="text-2xl font-bold text-indigo-600" id="dist-val">0 km</div>
+                <div class="text-sm text-slate-500" id="time-val">0 min aprox.</div>
+            </div>
+        </div>
+
+        <!-- Contenedor del Mapa -->
+        <div class="w-full lg:w-3/4">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden border border-slate-200">
+                <div id="map"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Scripts de Leaflet y Routing -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+    <script>
+        // Coordenadas centrales de Tijuana (Zona Río)
+        const TIJUANA_COORDS = [32.5149, -117.0382];
+        
+        // Inicialización del mapa
+        const map = L.map('map').setView(TIJUANA_COORDS, 12);
+
+        // Capa de mosaicos (Tiles) de OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Configuración del motor de rutas
+        const routingControl = L.Routing.control({
+            waypoints: [],
+            lineOptions: {
+                styles: [{ color: '#4f46e5', weight: 5 }] // Color Indigo-600 de Tailwind
+            },
+            routeWhileDragging: true,
+            language: 'es',
+            showAlternatives: true,
+            createMarker: function(i, wp, n) {
+                // Personalización de iconos de marcador
+                const markerLabel = (i === 0) ? "Inicio" : (i === n - 1 ? "Destino" : "Punto " + i);
+                return L.marker(wp.latLng).bindPopup(markerLabel);
+            }
+        }).addTo(map);
+
+        // Evento al calcular ruta para mostrar estadísticas
+        routingControl.on('routesfound', function(e) {
+            const routes = e.routes;
+            const summary = routes[0].summary;
+            
+            const statsPanel = document.getElementById('stats-panel');
+            statsPanel.classList.remove('hidden');
+            
+            // Convertir metros a km y segundos a min
+            document.getElementById('dist-val').innerText = (summary.totalDistance / 1000).toFixed(2) + ' km';
+            document.getElementById('time-val').innerText = Math.round(summary.totalTime / 60) + ' min aproximadamente';
+        });
+
+        // Lógica para añadir puntos al hacer clic
+        map.on('click', function(e) {
+            const currentWaypoints = routingControl.getWaypoints();
+            
+            // Buscar el primer waypoint vacío para llenarlo
+            let added = false;
+            for (let i = 0; i < currentWaypoints.length; i++) {
+                if (!currentWaypoints[i].latLng) {
+                    routingControl.spliceWaypoints(i, 1, e.latLng);
+                    added = true;
+                    break;
+                }
+            }
+            
+            // Si no hay vacíos (o ya hay dos), añadir un nuevo punto al final
+            if (!added) {
+                const lastIdx = currentWaypoints.length;
+                routingControl.spliceWaypoints(lastIdx, 0, e.latLng);
+            }
+        });
+
+        // Botón de Limpiar
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            routingControl.setWaypoints([]);
+            document.getElementById('stats-panel').classList.add('hidden');
+        });
+
+        // Botón de Centrar
+        document.getElementById('centerTj').addEventListener('click', () => {
+            map.flyTo(TIJUANA_COORDS, 12);
+        });
+
+    </script>
+</body>
+</html>
+
