@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Explorador - Simulación Red</title>
+    <title>Bici.Segura App</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -14,42 +14,63 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; }
         .leaflet-touch .leaflet-bar a { width: 44px; height: 44px; line-height: 44px; font-size: 18px; }
+        
+        /* Scrollbar personalizado */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Estados de pestañas móviles */
         .tab-active { color: #2563eb; border-top: 2px solid #2563eb; background-color: #eff6ff; }
         .tab-inactive { color: #64748b; border-top: 2px solid transparent; }
+        
+        /* Animaciones */
         @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .toast-enter { animation: slideUp 0.3s ease-out forwards; }
+        
         .cursor-crosshair { cursor: crosshair !important; }
+        .toast-error { background-color: #ef4444 !important; }
         
         /* Estilos Popup Mejorados */
         .leaflet-popup-content-wrapper { border-radius: 12px; padding: 0; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-        .leaflet-popup-content { margin: 0; width: 200px !important; }
+        .leaflet-popup-content { margin: 0; width: 220px !important; }
         .leaflet-popup-tip { background: white; }
-
-        /* Estilo para Toast de Error */
-        .toast-error { background-color: #ef4444 !important; } /* Red-500 */
+        
+        /* Botón volver flotante */
+        .btn-back { position: absolute; top: 1rem; left: 1rem; z-index: 1000; background: white; padding: 0.5rem; border-radius: 9999px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); transition: transform 0.2s; }
+        .btn-back:active { transform: scale(0.95); }
     </style>
 </head>
 <body class="bg-gray-50 text-slate-800 font-sans flex flex-col h-screen">
+
+    <!-- Botón flotante para volver a la Landing -->
+    <a href="{{ url_for('landing') }}" class="btn-back md:hidden" title="Volver al inicio">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+    </a>
 
     <div class="flex-1 flex flex-col md:flex-row relative overflow-hidden">
         
         <!-- SECCIÓN 1: LISTA -->
         <aside id="panel-lista" class="w-full md:w-1/3 lg:w-1/4 bg-white border-r border-gray-200 z-20 hidden md:flex flex-col h-full shadow-lg">
-            <div class="p-4 border-b border-gray-100 bg-white">
-                <h1 class="text-xl font-bold text-slate-800">Mis Lugares y Rutas</h1>
-                <p class="text-xs text-slate-500 mt-1">Usa los botones para editar rápidamente</p>
+            <div class="p-4 border-b border-gray-100 bg-white flex justify-between items-center">
+                <div>
+                    <h1 class="text-xl font-bold text-slate-800">Rutas y Alertas</h1>
+                    <p class="text-xs text-slate-500 mt-1">Gestión de puntos de seguridad</p>
+                </div>
+                <!-- Link a Home en Desktop -->
+                <a href="{{ url_for('landing') }}" class="text-xs text-blue-600 hover:underline font-medium">Inicio</a>
             </div>
+            
             <div id="places-list" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3 bg-slate-50">
                 <div id="empty-state" class="text-center p-8 text-slate-400 mt-10">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    <p class="text-sm">Tus guardados aparecerán aquí</p>
+                    <p class="text-sm">Tus rutas aparecerán aquí</p>
                 </div>
             </div>
         </aside>
@@ -61,25 +82,25 @@
             <!-- Controles Flotantes -->
             <div class="absolute bottom-48 right-2.5 md:bottom-44 md:right-2.5 z-[800] flex flex-col gap-3 items-end">
                 
-                <button id="btn-save-route" onclick="saveRoute()" class="hidden bg-blue-600 text-white p-3 rounded-full shadow-lg border border-blue-700 hover:bg-blue-700 transition-all transform hover:scale-105 group relative" title="Guardar ruta actual">
+                <button id="btn-save-route" onclick="saveRoute()" class="hidden bg-blue-600 text-white p-3 rounded-full shadow-lg border border-blue-700 hover:bg-blue-700 transition-all transform hover:scale-105 group relative" title="Guardar ruta">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                     </svg>
                 </button>
 
-                <button id="btn-undo-point" onclick="undoLastRoutePoint()" class="hidden bg-white text-slate-700 p-3 rounded-full shadow-lg border border-gray-200 hover:text-blue-600 transition-all transform hover:scale-105" title="Deshacer último punto">
+                <button id="btn-undo-point" onclick="undoLastRoutePoint()" class="hidden bg-white text-slate-700 p-3 rounded-full shadow-lg border border-gray-200 hover:text-blue-600 transition-all transform hover:scale-105" title="Deshacer">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                     </svg>
                 </button>
 
-                <button id="btn-clear-route" onclick="clearCurrentDrawing()" class="hidden bg-white text-red-500 p-3 rounded-full shadow-lg border border-gray-200 hover:bg-red-50 transition-all transform hover:scale-105" title="Cancelar dibujo">
+                <button id="btn-clear-route" onclick="clearCurrentDrawing()" class="hidden bg-white text-red-500 p-3 rounded-full shadow-lg border border-gray-200 hover:bg-red-50 transition-all transform hover:scale-105" title="Cancelar">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
 
-                <button id="btn-route-mode" onclick="toggleRouteMode()" class="bg-white text-slate-700 p-3 rounded-full shadow-lg border border-gray-200 hover:text-blue-600 transition-all transform hover:scale-105 group relative" title="Modo Crear Ruta">
+                <button id="btn-route-mode" onclick="toggleRouteMode()" class="bg-white text-slate-700 p-3 rounded-full shadow-lg border border-gray-200 hover:text-blue-600 transition-all transform hover:scale-105 group relative" title="Nueva Ruta">
                     <div class="absolute right-12 top-1/2 -translate-y-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none mr-2">
                         Nueva Ruta
                     </div>
@@ -89,7 +110,7 @@
                 </button>
             </div>
 
-            <!-- Toast -->
+            <!-- Toast Notification -->
             <div id="toast" class="absolute bottom-24 right-4 md:bottom-8 md:right-auto md:left-1/2 md:transform md:-translate-x-1/2 bg-slate-800 text-white px-5 py-3 rounded-full shadow-xl z-[1000] hidden flex items-center gap-3 transition-all duration-300">
                 <svg id="toast-spinner" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -100,14 +121,18 @@
         </main>
     </div>
 
-    <!-- NAVEGACIÓN MÓVIL -->
+    <!-- Navegación Móvil -->
     <nav class="md:hidden bg-white border-t border-gray-200 flex h-16 z-30 shrink-0">
         <button id="tab-mapa" class="flex-1 flex flex-col items-center justify-center tab-active transition-colors" onclick="switchTab('mapa')">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0121 18.382V7.618a1 1 0 01-.447-.894L15 7m0 13V7" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0121 18.382V7.618a1 1 0 01-.447-.894L15 7m0 13V7" />
+            </svg>
             <span class="text-xs font-medium">Mapa</span>
         </button>
         <button id="tab-lista" class="flex-1 flex flex-col items-center justify-center tab-inactive transition-colors" onclick="switchTab('lista')">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
             <span class="text-xs font-medium">Lista</span>
             <span id="badge-count" class="absolute top-2 ml-6 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full hidden">0</span>
         </button>
@@ -128,7 +153,7 @@
         let routeCoords = [];
         
         // --- Estado Simulación Red ---
-        let saveAttemptCounter = 0; // Contador de intentos
+        let saveAttemptCounter = 0; // Contador de intentos para simular errores
 
         document.addEventListener('DOMContentLoaded', () => {
             const initialCoords = [32.5149, -117.0382];
@@ -172,9 +197,13 @@
             
             tempMarker.bindPopup(container).openPopup();
             
+            // Asignar eventos tras crear el popup
             setTimeout(() => {
-                document.getElementById('btn-save-pop').onclick = () => savePoint(lat, lng);
-                document.getElementById('btn-cancel-pop').onclick = () => { map.removeLayer(tempMarker); tempMarker = null; };
+                const saveBtn = document.getElementById('btn-save-pop');
+                const cancelBtn = document.getElementById('btn-cancel-pop');
+                
+                if(saveBtn) saveBtn.onclick = () => savePoint(lat, lng);
+                if(cancelBtn) cancelBtn.onclick = () => { map.removeLayer(tempMarker); tempMarker = null; };
             }, 50);
         }
 
@@ -190,7 +219,7 @@
                 btn.classList.add('bg-blue-600', 'text-white', 'ring-2', 'ring-blue-300');
                 btn.classList.remove('bg-white', 'text-slate-700');
                 mapContainer.classList.add('cursor-crosshair');
-                showToast('Modo Ruta: Toca el mapa para dibujar', false);
+                showToast('Modo Ruta: Toca para dibujar', false);
                 map.closePopup();
                 if(tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
             } else {
@@ -244,19 +273,16 @@
         function saveRoute() {
             if (routeCoords.length < 2) return;
             
-            // 1. Simular inicio de carga (Internet Lento)
             showToast('Guardando ruta...', true);
             
-            // 2. Espera artificial de 2 segundos
+            // Simulación de red
             setTimeout(() => {
-                // 3. Simulación de Error de Red (Cada 3 intentos)
                 saveAttemptCounter++;
                 if (saveAttemptCounter % 3 === 0) {
-                    showToast('Error de conexión: No se pudo guardar', false, true); // true = es error
-                    return; // Detener guardado
+                    showToast('Error de conexión: No se pudo guardar', false, true);
+                    return; 
                 }
 
-                // 4. Éxito
                 const totalDist = calculateDistance(routeCoords);
                 const distFormatted = formatDistance(totalDist);
                 const id = Date.now();
@@ -274,10 +300,10 @@
                 toggleRouteMode(false); 
                 showToast(`¡${routeName} guardada!`, false);
                 updateBadge();
-            }, 2000); // 2000ms de latencia simulada
+            }, 2000); 
         }
 
-        // --- Nuevos Popups ---
+        // --- Popups Interactivos ---
         function bindSavedRoutePopup(layer, name, dist, id) {
             const container = document.createElement('div');
             container.className = 'w-full';
@@ -324,26 +350,20 @@
             else if (item.type === 'route') { editRouteGeometry(id); }
         }
 
-        // --- Lógica Guardado Punto ---
+        // --- Guardado de Puntos ---
         function savePoint(lat, lng) {
             map.closePopup();
-            
-            // 1. Simular carga
             showToast('Guardando punto...', true);
-            if (tempMarker) tempMarker.setOpacity(0.5); // Feedback visual en el marcador (fantasma)
+            if (tempMarker) tempMarker.setOpacity(0.5); 
             
-            // 2. Espera artificial de 2 segundos (Internet lento)
             setTimeout(() => {
-                // 3. Simulación Error de Red
                 saveAttemptCounter++;
                 if (saveAttemptCounter % 3 === 0) {
                     showToast('Error de red: Inténtalo de nuevo', false, true);
-                    if (tempMarker) tempMarker.setOpacity(1); // Restaurar opacidad
-                    if (tempMarker) tempMarker.openPopup(); // Reabrir para reintentar
+                    if (tempMarker) { tempMarker.setOpacity(1); tempMarker.openPopup(); }
                     return;
                 }
 
-                // 4. Éxito
                 const id = Date.now();
                 const pointName = `Punto #${savedItems.filter(i => i.type === 'point').length + 1}`;
                 const pointData = { id: id, type: 'point', name: pointName, lat: lat, lng: lng };
@@ -352,7 +372,6 @@
                 if (tempMarker) { m = tempMarker; tempMarker = null; } 
                 else { m = L.marker([lat, lng]).addTo(map); }
                 
-                // Restaurar estado visual (Confirmación)
                 m.setOpacity(1); 
                 m.setIcon(new L.Icon.Default());
                 bindSavedPointPopup(m, pointName, id);
@@ -363,7 +382,7 @@
                 updateBadge();
                 showToast('¡Punto guardado!', false);
                 m.openPopup();
-            }, 2000); // 2000ms
+            }, 2000); 
         }
 
         function enablePointDrag(id, marker) {
@@ -418,6 +437,7 @@
             updateRouteControls();
         }
 
+        // --- Lista Lateral ---
         function addItemToList(item) {
             const listContainer = document.getElementById('places-list');
             const emptyState = document.getElementById('empty-state');
@@ -425,7 +445,7 @@
 
             const el = document.createElement('div');
             el.id = `item-${item.id}`;
-            el.className = "bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all group relative overflow-hidden";
+            el.className = "bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all group relative overflow-hidden animate-[fadeIn_0.5s_ease-out]";
             
             let iconSvg, subText;
             if (item.type === 'point') {
@@ -446,10 +466,11 @@
                         </div>
                     </div>
                 </div>
+                <!-- Barra de Acciones -->
                 <div class="bg-gray-50 border-t border-gray-100 flex divide-x divide-gray-200">
                     <button onclick="triggerEditGeometry(${item.id})" class="flex-1 py-2 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition flex items-center justify-center gap-1" title="Editar Mapa">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                        Editar Mapa
+                        Editar
                     </button>
                     <button onclick="editItemName(${item.id})" class="flex-1 py-2 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition flex items-center justify-center gap-1" title="Renombrar">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -474,6 +495,7 @@
             }
         }
 
+        // --- Acciones de Item ---
         function editItemName(id) {
             const item = savedItems.find(i => i.id === id);
             if (!item) return;
@@ -503,6 +525,7 @@
             showToast('Eliminado', false);
         }
 
+        // --- Helpers ---
         function calculateDistance(coords) {
             let total = 0;
             for(let i=0; i<coords.length-1; i++) total += map.distance(coords[i], coords[i+1]);
@@ -513,7 +536,6 @@
             return meters > 1000 ? (meters/1000).toFixed(2) + ' km' : Math.round(meters) + ' m';
         }
 
-        // --- Toast Mejorado con Error ---
         function showToast(msg, loading, isError = false) {
             const toast = document.getElementById('toast');
             document.getElementById('toast-message').textContent = msg;
@@ -521,7 +543,6 @@
             
             if (isError) {
                 toast.classList.add('toast-error');
-                // Ocultar spinner en error
                 document.getElementById('toast-spinner').style.display = 'none';
             } else {
                 toast.classList.remove('toast-error');
@@ -533,7 +554,6 @@
                 setTimeout(() => { 
                     toast.classList.add('hidden'); 
                     toast.classList.remove('toast-enter');
-                    // Resetear estilo
                     setTimeout(() => toast.classList.remove('toast-error'), 300);
                 }, 3000);
             }
