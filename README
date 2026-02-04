@@ -1,0 +1,77 @@
+### BICI.SEGURA
+
+Tu copiloto urbano: Rutas inteligentes, reportes de incidentes y navegación segura para ciclistas.
+
+## DESCRIPCION
+
+Bici.Segura es una aplicacion web progresiva disenada para mejorar la seguridad vial de los ciclistas urbanos. A diferencia de los mapas genericos, esta herramienta se centra en la Experiencia de Usuario (UX) en movimiento. Permite planificar rutas evitando avenidas peligrosas, marcar baches o zonas de riesgo, y medir distancias de entrenamiento, todo con una interfaz optimizada para ser utilizada con una sola mano o mientras el telefono esta en el soporte del manillar.
+
+## EJECUCION DEL PROYECTO
+
+Sigue estos pasos detallados para desplegar la aplicacion en tu entorno local:
+
+- Clona el repositorio:
+En la terminal se debe correr el comando:
+git clone https://github.com/Diaz-Popomeya-Daniel/Bici.Segura-tarea-1.git
+
+- Ubica la carpeta del proyecto:
+Se debe buscar la carpeta donde se guardo el proyecto y entrar en ella.
+
+- Crea el entorno virtual:
+Una vez dentro de la carpeta del proyecto, se debe crear un entorno virtual con el comando:
+python -m venv Lab1
+
+- Activa el entorno virtual:
+Se debe activar el entorno virtual con el comando correspondiente a tu sistema operativo:
+
+Windows:
+Lab1\Scripts\activate
+
+Linux / Mac:
+source Lab1/bin/activate
+
+- Instala las dependencias:
+Instalar Flask dentro del entorno virtual utilizando el comando:
+pip install flask
+
+- Ejecuta el proyecto:
+Despues se debe ejecutar el proyecto con el comando:
+python main.py
+
+- Acceso a Bici.Segura:
+Abrir con Ctrl + Click la direccion IP (usualmente https://www.google.com/search?q=http://127.0.0.1:5000) que la terminal te proporciona para entrar a la aplicacion.
+
+## STACK TECNOLOGICO
+
+Backend: Python (Flask) - Gestion de datos de rutas y puntos de seguridad.
+
+Frontend: JavaScript (Vanilla) + Leaflet.js v1.9.4 - Renderizado de mapas ligeros para bajo consumo de datos moviles.
+
+Estilos: Tailwind CSS - Interfaz de alto contraste y adaptabilidad movil.
+
+Mapas: OpenStreetMap - Cartografia abierta y colaborativa.
+
+## JUSTIFICACION DE DISENO Y UX 
+
+- El diseno de Bici.Segura resuelve problemas especificos de la navegacion en bicicleta. Basado en las pruebas de usuario y bitacoras de diseno, estas son las decisiones clave:
+
+- Ergonomia en Movimiento (Ley de Fitts):
+Los ciclistas a menudo usan soportes de manillar o interactuan con el mapa en paradas breves. Por ello, los controles de zoom y edicion se movieron a la esquina inferior derecha, la zona mas accesible para el pulgar. Ademas, los botones tienen un tamano aumentado (44px) para facilitar el toque incluso usando guantes de ciclismo.
+
+- Resiliencia ante Conexiones Inestables:
+Al rodar por la ciudad, la cobertura de red varia. Elimine las alertas intrusivas que bloquean la pantalla. En su lugar, implemente notificaciones "Toast" no bloqueantes para informar sobre el estado del guardado de rutas. La simulacion de red incluida asegura que la app maneje visualmente la latencia sin "congelarse", vital para no distraer al ciclista.
+
+- Modo "Ruta Segura" (Interaccion):
+La funcionalidad de edicion de rutas permite modificar el trazado punto por punto. Esto es crucial para los ciclistas, ya que les permite ajustar manualmente su camino para evitar calles rapidas o peligrosas que los algoritmos automaticos suelen ignorar.
+
+- Interfaz Adaptable (Escritorio vs. Rodada):
+
+- Escritorio: Pantalla dividida para planificar la ruta comodamente antes de salir de casa.
+
+- Movil: Sistema de pestanas inferiores grandes que permite cambiar entre el mapa y la lista de alertas sin movimientos complejos de la mano, priorizando la seguridad.
+
+## CREDITOS Y HERRAMIENTAS
+
+El desarrollo de este codigo conto con la asistencia de Gemini Canvas para la optimizacion de algoritmos de enrutamiento y estructura base.
+
+Prompt base utilizado: "Crea una Landing Page HTML para una app de mapas llamada [BiciSegura]. Debe tener un 'Hero' con una imagen de fondo de un mapa estilizado o topográfico, un título grande, y un botón CTA prominente que diga 'Explorar Mapa'. Usa Tailwind CSS. El diseño debe inspirar aventura/seguridad."
