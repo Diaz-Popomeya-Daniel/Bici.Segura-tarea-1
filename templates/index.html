@@ -3,167 +3,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tijuana Ruta Segura - Planeador de Rutas</title>
-    
-    <!-- CDN de Tailwind CSS -->
+    <title>BiciSegura | Ride the Future</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <!-- Leaflet Routing Machine CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <style>
-        /* Estilos personalizados para el contenedor del mapa */
-        #map {
-            height: calc(100vh - 180px);
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000;
+            color: #fff;
+        }
+
+        /* Hero Fullscreen con Imagen Inmersiva */
+        .hero-viewport {
+            position: relative;
+            height: 100vh;
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bg-video-wrap {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .bg-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.4) contrast(1.1);
+            transform: scale(1.1);
+            transition: transform 10s ease-out;
+        }
+
+        .hero-viewport:hover .bg-image {
+            transform: scale(1);
+        }
+
+        /* Overlay Gradiente */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.8) 100%);
             z-index: 1;
         }
-        /* Ajuste para que el panel de instrucciones sea legible */
-        .leaflet-routing-container {
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-            max-height: 300px;
-            overflow-y: auto;
-            font-family: ui-sans-serif, system-ui, sans-serif;
+
+        .content-z {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .text-huge {
+            font-size: clamp(3rem, 15vw, 12rem);
+            line-height: 0.8;
+            letter-spacing: -0.05em;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-white {
+            background: #fff;
+            color: #000;
+            padding: 1.25rem 2.5rem;
+            border-radius: 100px;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: 0.75rem;
+        }
+
+        .btn-white:hover {
+            transform: scale(1.05);
+            background: #10b981;
+            color: #fff;
+        }
+
+        .scroller {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0) translateX(-50%);}
+            40% {transform: translateY(-10px) translateX(-50%);}
+            60% {transform: translateY(-5px) translateX(-50%);}
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 font-sans">
+<body>
 
-    <!-- Navegación Superior -->
-    <nav class="bg-indigo-700 text-white p-4 shadow-md">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 7m0 10V7" />
-                </svg>
-                Tijuana Route Master
-            </h1>
-            <div class="text-sm hidden sm:block">OpenStreetMap + Leaflet</div>
+    <!-- Navegación Minimalista -->
+    <nav class="fixed top-0 w-full z-[100] py-6 px-10 flex justify-between items-center glass-nav">
+        <div class="text-xl font-black tracking-tighter">BICI.SEGURA</div>
+        <div class="hidden md:flex space-x-8 text-[10px] font-bold tracking-[0.3em] uppercase opacity-60">
+            <a href="#" class="hover:opacity-100 transition">Rutas</a>
+            <a href="#" class="hover:opacity-100 transition">Dispositivo</a>
+            <a href="#" class="hover:opacity-100 transition">Comunidad</a>
         </div>
+        <button class="text-[10px] font-bold tracking-widest uppercase border border-white/20 px-4 py-2 rounded-full hover:bg-white hover:text-black transition">Log In</button>
     </nav>
 
-    <main class="container mx-auto p-4 flex flex-col lg:flex-row gap-4">
-        
-        <!-- Panel Lateral de Controles -->
-        <div class="w-full lg:w-1/4 flex flex-col gap-4">
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                <h2 class="font-semibold text-lg mb-3">Controles de Ruta</h2>
-                <p class="text-sm text-slate-500 mb-4">Haz clic en el mapa para añadir puntos de inicio, destino o paradas intermedias.</p>
-                
-                <div class="space-y-2">
-                    <button id="clearBtn" class="w-full bg-rose-500 hover:bg-rose-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                        </svg>
-                        Limpiar Ruta
-                    </button>
-                    
-                    <button id="centerTj" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                        Re-centrar Tijuana
-                    </button>
+    <!-- Hero Inmersivo -->
+    <section class="hero-viewport">
+        <div class="bg-video-wrap">
+            <img src="https://images.unsplash.com/photo-1471506480208-91b3a4cc78be?q=80&w=2074&auto=format&fit=crop" alt="[Ciclista en carretera nocturna]" class="bg-image">
+        </div>
+        <div class="overlay"></div>
+
+        <div class="content-z px-6">
+            <p class="text-emerald-500 font-bold tracking-[0.5em] uppercase text-xs mb-6" data-aos="fade-down">The City is Yours</p>
+            <h1 class="text-huge mb-10" data-aos="zoom-out" data-aos-delay="200">
+                LIBERTAD<br><span class="opacity-20">SIN LÍMITES</span>
+            </h1>
+            <div data-aos="fade-up" data-aos-delay="400">
+                    <a href="{{ url_for('mapa') }}" class="btn-white inline-block">Empezar el Viaje</a>
                 </div>
             </div>
+    </section>
 
-            <div id="stats-panel" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hidden">
-                <h3 class="font-bold text-slate-700 uppercase text-xs tracking-wider mb-2">Información de Trayecto</h3>
-                <div class="text-2xl font-bold text-indigo-600" id="dist-val">0 km</div>
-                <div class="text-sm text-slate-500" id="time-val">0 min aprox.</div>
+    <!-- Sección de Concepto -->
+    <section class="py-40 px-6 max-w-7xl mx-auto">
+        <div class="grid md:grid-cols-2 gap-24 items-center">
+            <div data-aos="fade-right">
+                <h2 class="text-5xl font-bold mb-8 leading-tight">No es solo navegación.<br>Es instinto urbano.</h2>
+                <p class="text-white/40 text-xl leading-relaxed mb-10">
+                    BiciSegura utiliza inteligencia colectiva para mapear la ciudad. Cada bache, cada zona de riesgo y cada atajo seguro es compartido en tiempo real.
+                </p>
+                <div class="grid grid-cols-2 gap-10">
+                    <div>
+                        <h4 class="text-emerald-500 font-bold text-3xl mb-2">98%</h4>
+                        <p class="text-xs uppercase tracking-widest opacity-50">Precisión en Rutas</p>
+                    </div>
+                    <div>
+                        <h4 class="text-emerald-500 font-bold text-3xl mb-2">24/7</h4>
+                        <p class="text-xs uppercase tracking-widest opacity-50">Monitoreo Activo</p>
+                    </div>
+                </div>
+            </div>
+            <div class="relative" data-aos="fade-left">
+                <div class="aspect-[4/5] rounded-3xl overflow-hidden grayscale hover:grayscale-0 transition-all duration-700 shadow-2xl">
+                    <img src="https://images.unsplash.com/photo-1507035895480-2b3156c31fc8?q=80&w=2070&auto=format&fit=crop" alt="[Ciclista urbano]" class="w-full h-full object-cover">
+                </div>
+                <div class="absolute -bottom-10 -left-10 bg-emerald-600 p-8 rounded-2xl hidden md:block">
+                    <p class="text-sm font-bold uppercase tracking-tighter italic">"La mejor app que he usado jamás"</p>
+                </div>
             </div>
         </div>
+    </section>
 
-        <!-- Contenedor del Mapa -->
-        <div class="w-full lg:w-3/4">
-            <div class="bg-white rounded-xl shadow-md overflow-hidden border border-slate-200">
-                <div id="map"></div>
+    <!-- Pantalla de la App -->
+    <section class="py-20 bg-zinc-950">
+        <div class="max-w-4xl mx-auto text-center px-6">
+            <h3 class="text-3xl font-light mb-20 opacity-80" data-aos="fade-up">Interfaz táctica para el mundo real.</h3>
+            <div class="inline-block relative" data-aos="zoom-in">
+                <div class="absolute inset-0 bg-emerald-500/20 blur-[150px] rounded-full"></div>
+                <img src="https://images.unsplash.com/photo-1511994298241-608e28f14fde?q=80&w=2070&auto=format&fit=crop" alt="[Mapa en smartphone]" class="relative z-10 w-full max-w-sm mx-auto rounded-[3rem] border-[12px] border-zinc-900 shadow-2xl">
             </div>
         </div>
+    </section>
 
-    </main>
-
-    <!-- Scripts de Leaflet y Routing -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <!-- Footer -->
+    <footer class="py-20 border-t border-white/5 text-center">
+        <div class="mb-10 text-2xl font-black">BICI.SEGURA</div>
+        <div class="flex justify-center space-x-6 mb-10 opacity-40 text-xs font-bold tracking-widest uppercase">
+            <a href="#">Privacidad</a>
+            <a href="#">Términos</a>
+            <a href="#">API</a>
+        </div>
+        <p class="text-white/20 text-[10px] tracking-widest uppercase">© 2026 Designed for the streets.</p>
+    </footer>
 
     <script>
-        // Coordenadas centrales de Tijuana (Zona Río)
-        const TIJUANA_COORDS = [32.5149, -117.0382];
-        
-        // Inicialización del mapa
-        const map = L.map('map').setView(TIJUANA_COORDS, 12);
-
-        // Capa de mosaicos (Tiles) de OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-
-        // Configuración del motor de rutas
-        const routingControl = L.Routing.control({
-            waypoints: [],
-            lineOptions: {
-                styles: [{ color: '#4f46e5', weight: 5 }] // Color Indigo-600 de Tailwind
-            },
-            routeWhileDragging: true,
-            language: 'es',
-            showAlternatives: true,
-            createMarker: function(i, wp, n) {
-                // Personalización de iconos de marcador
-                const markerLabel = (i === 0) ? "Inicio" : (i === n - 1 ? "Destino" : "Punto " + i);
-                return L.marker(wp.latLng).bindPopup(markerLabel);
-            }
-        }).addTo(map);
-
-        // Evento al calcular ruta para mostrar estadísticas
-        routingControl.on('routesfound', function(e) {
-            const routes = e.routes;
-            const summary = routes[0].summary;
-            
-            const statsPanel = document.getElementById('stats-panel');
-            statsPanel.classList.remove('hidden');
-            
-            // Convertir metros a km y segundos a min
-            document.getElementById('dist-val').innerText = (summary.totalDistance / 1000).toFixed(2) + ' km';
-            document.getElementById('time-val').innerText = Math.round(summary.totalTime / 60) + ' min aproximadamente';
+        AOS.init({
+            duration: 1000,
+            once: true
         });
-
-        // Lógica para añadir puntos al hacer clic
-        map.on('click', function(e) {
-            const currentWaypoints = routingControl.getWaypoints();
-            
-            // Buscar el primer waypoint vacío para llenarlo
-            let added = false;
-            for (let i = 0; i < currentWaypoints.length; i++) {
-                if (!currentWaypoints[i].latLng) {
-                    routingControl.spliceWaypoints(i, 1, e.latLng);
-                    added = true;
-                    break;
-                }
-            }
-            
-            // Si no hay vacíos (o ya hay dos), añadir un nuevo punto al final
-            if (!added) {
-                const lastIdx = currentWaypoints.length;
-                routingControl.spliceWaypoints(lastIdx, 0, e.latLng);
-            }
-        });
-
-        // Botón de Limpiar
-        document.getElementById('clearBtn').addEventListener('click', () => {
-            routingControl.setWaypoints([]);
-            document.getElementById('stats-panel').classList.add('hidden');
-        });
-
-        // Botón de Centrar
-        document.getElementById('centerTj').addEventListener('click', () => {
-            map.flyTo(TIJUANA_COORDS, 12);
-        });
-
     </script>
 </body>
 </html>
-

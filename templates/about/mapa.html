@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorador - Simulación Red</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; }
+        .leaflet-touch .leaflet-bar a { width: 44px; height: 44px; line-height: 44px; font-size: 18px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .tab-active { color: #2563eb; border-top: 2px solid #2563eb; background-color: #eff6ff; }
+        .tab-inactive { color: #64748b; border-top: 2px solid transparent; }
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .toast-enter { animation: slideUp 0.3s ease-out forwards; }
+        .cursor-crosshair { cursor: crosshair !important; }
+        
+        /* Estilos Popup Mejorados */
+        .leaflet-popup-content-wrapper { border-radius: 12px; padding: 0; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .leaflet-popup-content { margin: 0; width: 200px !important; }
+        .leaflet-popup-tip { background: white; }
+
+        /* Estilo para Toast de Error */
+        .toast-error { background-color: #ef4444 !important; } /* Red-500 */
+    </style>
+</head>
+<body class="bg-gray-50 text-slate-800 font-sans flex flex-col h-screen">
+
+    <div class="flex-1 flex flex-col md:flex-row relative overflow-hidden">
+        
+        <!-- SECCIÓN 1: LISTA -->
+        <aside id="panel-lista" class="w-full md:w-1/3 lg:w-1/4 bg-white border-r border-gray-200 z-20 hidden md:flex flex-col h-full shadow-lg">
+            <div class="p-4 border-b border-gray-100 bg-white">
+                <h1 class="text-xl font-bold text-slate-800">Mis Lugares y Rutas</h1>
+                <p class="text-xs text-slate-500 mt-1">Usa los botones para editar rápidamente</p>
+            </div>
+            <div id="places-list" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3 bg-slate-50">
+                <div id="empty-state" class="text-center p-8 text-slate-400 mt-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <p class="text-sm">Tus guardados aparecerán aquí</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- SECCIÓN 2: MAPA -->
+        <main id="panel-mapa" class="w-full md:w-2/3 lg:w-3/4 h-full relative flex-1">
+            <div id="map" class="w-full h-full z-0 transition-all"></div>
+            
+            <!-- Controles Flotantes -->
+            <div class="absolute bottom-48 right-2.5 md:bottom-44 md:right-2.5 z-[800] flex flex-col gap-3 items-end">
+                
+                <button id="btn-save-route" onclick="saveRoute()" class="hidden bg-blue-600 text-white p-3 rounded-full shadow-lg border border-blue-700 hover:bg-blue-700 transition-all transform hover:scale-105 group relative" title="Guardar ruta actual">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                </button>
+
+                <button id="btn-undo-point" onclick="undoLastRoutePoint()" class="hidden bg-white text-slate-700 p-3 rounded-full shadow-lg border border-gray-200 hover:text-blue-600 transition-all transform hover:scale-105" title="Deshacer último punto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                    </svg>
+                </button>
+
+                <button id="btn-clear-route" onclick="clearCurrentDrawing()" class="hidden bg-white text-red-500 p-3 rounded-full shadow-lg border border-gray-200 hover:bg-red-50 transition-all transform hover:scale-105" title="Cancelar dibujo">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+
+                <button id="btn-route-mode" onclick="toggleRouteMode()" class="bg-white text-slate-700 p-3 rounded-full shadow-lg border border-gray-200 hover:text-blue-600 transition-all transform hover:scale-105 group relative" title="Modo Crear Ruta">
+                    <div class="absolute right-12 top-1/2 -translate-y-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none mr-2">
+                        Nueva Ruta
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Toast -->
+            <div id="toast" class="absolute bottom-24 right-4 md:bottom-8 md:right-auto md:left-1/2 md:transform md:-translate-x-1/2 bg-slate-800 text-white px-5 py-3 rounded-full shadow-xl z-[1000] hidden flex items-center gap-3 transition-all duration-300">
+                <svg id="toast-spinner" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span id="toast-message" class="text-sm font-medium">Procesando...</span>
+            </div>
+        </main>
+    </div>
+
+    <!-- NAVEGACIÓN MÓVIL -->
+    <nav class="md:hidden bg-white border-t border-gray-200 flex h-16 z-30 shrink-0">
+        <button id="tab-mapa" class="flex-1 flex flex-col items-center justify-center tab-active transition-colors" onclick="switchTab('mapa')">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0121 18.382V7.618a1 1 0 01-.447-.894L15 7m0 13V7" /></svg>
+            <span class="text-xs font-medium">Mapa</span>
+        </button>
+        <button id="tab-lista" class="flex-1 flex flex-col items-center justify-center tab-inactive transition-colors" onclick="switchTab('lista')">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+            <span class="text-xs font-medium">Lista</span>
+            <span id="badge-count" class="absolute top-2 ml-6 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full hidden">0</span>
+        </button>
+    </nav>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        // --- Estado Global ---
+        let map;
+        let savedItems = []; 
+        let savedLayers = {}; 
+        let tempMarker = null;
+        let isRoutingMode = false;
+        let currentRouteLine = null;
+        let routeNodes = []; 
+        let routeCoords = [];
+        
+        // --- Estado Simulación Red ---
+        let saveAttemptCounter = 0; // Contador de intentos
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const initialCoords = [32.5149, -117.0382];
+
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView(initialCoords, 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+            L.control.attribution({ position: 'bottomleft' }).addTo(map);
+
+            setTimeout(() => {
+                const zoomIn = document.querySelector('.leaflet-control-zoom-in');
+                const zoomOut = document.querySelector('.leaflet-control-zoom-out');
+                if (zoomIn) zoomIn.setAttribute('aria-label', 'Acercar mapa');
+                if (zoomOut) zoomOut.setAttribute('aria-label', 'Alejar mapa');
+            }, 500);
+
+            map.on('click', handleMapClick);
+        });
+
+        function handleMapClick(e) {
+            const { lat, lng } = e.latlng;
+
+            if (isRoutingMode) {
+                addRouteNode(lat, lng);
+                return;
+            }
+
+            if (tempMarker) map.removeLayer(tempMarker);
+            tempMarker = L.marker([lat, lng]).addTo(map);
+
+            // Popup Inicial
+            const container = document.createElement('div');
+            container.className = "text-center p-3";
+            container.innerHTML = `
+                <p class="font-bold text-slate-800 mb-3 text-base">¿Guardar punto?</p>
+                <div class="flex gap-2 justify-center">
+                    <button id="btn-cancel-pop" class="flex-1 bg-gray-100 hover:bg-gray-200 text-slate-600 py-2 rounded-lg text-sm transition">Cancelar</button>
+                    <button id="btn-save-pop" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm transition font-medium shadow-md">Guardar</button>
+                </div>
+            `;
+            
+            tempMarker.bindPopup(container).openPopup();
+            
+            setTimeout(() => {
+                document.getElementById('btn-save-pop').onclick = () => savePoint(lat, lng);
+                document.getElementById('btn-cancel-pop').onclick = () => { map.removeLayer(tempMarker); tempMarker = null; };
+            }, 50);
+        }
+
+        // --- Gestión de Rutas ---
+        function toggleRouteMode(forceState = null) {
+            if (forceState !== null) isRoutingMode = forceState;
+            else isRoutingMode = !isRoutingMode;
+            
+            const btn = document.getElementById('btn-route-mode');
+            const mapContainer = document.getElementById('map');
+
+            if (isRoutingMode) {
+                btn.classList.add('bg-blue-600', 'text-white', 'ring-2', 'ring-blue-300');
+                btn.classList.remove('bg-white', 'text-slate-700');
+                mapContainer.classList.add('cursor-crosshair');
+                showToast('Modo Ruta: Toca el mapa para dibujar', false);
+                map.closePopup();
+                if(tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
+            } else {
+                btn.classList.remove('bg-blue-600', 'text-white', 'ring-2', 'ring-blue-300');
+                btn.classList.add('bg-white', 'text-slate-700');
+                mapContainer.classList.remove('cursor-crosshair');
+            }
+            updateRouteControls();
+        }
+
+        function addRouteNode(lat, lng) {
+            routeCoords.push([lat, lng]);
+            const node = L.circleMarker([lat, lng], { color: '#2563eb', fillColor: '#fff', fillOpacity: 1, radius: 5, weight: 2 }).addTo(map);
+            routeNodes.push(node);
+            updateRoutePolyline();
+            updateRouteControls();
+        }
+
+        function undoLastRoutePoint() {
+            if (routeCoords.length === 0) return;
+            routeCoords.pop();
+            const lastNode = routeNodes.pop();
+            map.removeLayer(lastNode);
+            updateRoutePolyline();
+            updateRouteControls();
+        }
+
+        function updateRoutePolyline() {
+            if (routeCoords.length > 0) {
+                if (currentRouteLine) currentRouteLine.setLatLngs(routeCoords);
+                else currentRouteLine = L.polyline(routeCoords, { color: '#3b82f6', weight: 4, opacity: 0.7, dashArray: '10, 10', lineCap: 'round' }).addTo(map);
+            } else {
+                if (currentRouteLine) { map.removeLayer(currentRouteLine); currentRouteLine = null; }
+            }
+        }
+
+        function updateRouteControls() {
+            const hasPoints = routeCoords.length > 0;
+            const canSave = routeCoords.length >= 2;
+            const btnClear = document.getElementById('btn-clear-route');
+            const btnUndo = document.getElementById('btn-undo-point');
+            const btnSave = document.getElementById('btn-save-route');
+
+            if (hasPoints && isRoutingMode) { btnClear.classList.remove('hidden'); btnUndo.classList.remove('hidden'); }
+            else { btnClear.classList.add('hidden'); btnUndo.classList.add('hidden'); }
+
+            if (canSave && isRoutingMode) btnSave.classList.remove('hidden');
+            else btnSave.classList.add('hidden');
+        }
+
+        function saveRoute() {
+            if (routeCoords.length < 2) return;
+            
+            // 1. Simular inicio de carga (Internet Lento)
+            showToast('Guardando ruta...', true);
+            
+            // 2. Espera artificial de 2 segundos
+            setTimeout(() => {
+                // 3. Simulación de Error de Red (Cada 3 intentos)
+                saveAttemptCounter++;
+                if (saveAttemptCounter % 3 === 0) {
+                    showToast('Error de conexión: No se pudo guardar', false, true); // true = es error
+                    return; // Detener guardado
+                }
+
+                // 4. Éxito
+                const totalDist = calculateDistance(routeCoords);
+                const distFormatted = formatDistance(totalDist);
+                const id = Date.now();
+                const routeName = `Ruta #${savedItems.filter(i => i.type === 'route').length + 1}`;
+
+                const permanentRoute = L.polyline(routeCoords, { color: '#10b981', weight: 5, opacity: 0.8 }).addTo(map);
+                bindSavedRoutePopup(permanentRoute, routeName, distFormatted, id);
+                savedLayers[id] = permanentRoute;
+
+                const routeData = { id: id, type: 'route', name: routeName, coords: [...routeCoords], distance: distFormatted };
+
+                savedItems.push(routeData);
+                addItemToList(routeData);
+                clearCurrentDrawing();
+                toggleRouteMode(false); 
+                showToast(`¡${routeName} guardada!`, false);
+                updateBadge();
+            }, 2000); // 2000ms de latencia simulada
+        }
+
+        // --- Nuevos Popups ---
+        function bindSavedRoutePopup(layer, name, dist, id) {
+            const container = document.createElement('div');
+            container.className = 'w-full';
+            container.innerHTML = `
+                <div class="bg-gray-50 p-3 border-b border-gray-100">
+                    <h3 class="font-bold text-slate-800 text-base">${name}</h3>
+                    <p class="text-xs text-slate-500">${dist}</p>
+                </div>
+                <button id="btn-edit-route-${id}" class="w-full text-blue-600 font-medium py-3 hover:bg-blue-50 transition flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                    Editar Trazado
+                </button>
+            `;
+            layer.bindPopup(container);
+            layer.on('popupopen', () => {
+                const btn = document.getElementById(`btn-edit-route-${id}`);
+                if(btn) btn.onclick = () => triggerEditGeometry(id);
+            });
+        }
+
+        function bindSavedPointPopup(marker, name, id) {
+            const container = document.createElement('div');
+            container.className = 'w-full';
+            container.innerHTML = `
+                <div class="bg-gray-50 p-3 border-b border-gray-100">
+                    <h3 class="font-bold text-slate-800 text-base">${name}</h3>
+                </div>
+                <button id="btn-move-${id}" class="w-full text-blue-600 font-medium py-3 hover:bg-blue-50 transition flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                    Mover Ubicación
+                </button>
+            `;
+            marker.bindPopup(container);
+            marker.on('popupopen', () => {
+                const btn = document.getElementById(`btn-move-${id}`);
+                if(btn) btn.onclick = () => triggerEditGeometry(id);
+            });
+        }
+
+        function triggerEditGeometry(id) {
+            const item = savedItems.find(i => i.id === id);
+            if (!item) return;
+            if (item.type === 'point') { const layer = savedLayers[id]; if (layer) enablePointDrag(id, layer); }
+            else if (item.type === 'route') { editRouteGeometry(id); }
+        }
+
+        // --- Lógica Guardado Punto ---
+        function savePoint(lat, lng) {
+            map.closePopup();
+            
+            // 1. Simular carga
+            showToast('Guardando punto...', true);
+            if (tempMarker) tempMarker.setOpacity(0.5); // Feedback visual en el marcador (fantasma)
+            
+            // 2. Espera artificial de 2 segundos (Internet lento)
+            setTimeout(() => {
+                // 3. Simulación Error de Red
+                saveAttemptCounter++;
+                if (saveAttemptCounter % 3 === 0) {
+                    showToast('Error de red: Inténtalo de nuevo', false, true);
+                    if (tempMarker) tempMarker.setOpacity(1); // Restaurar opacidad
+                    if (tempMarker) tempMarker.openPopup(); // Reabrir para reintentar
+                    return;
+                }
+
+                // 4. Éxito
+                const id = Date.now();
+                const pointName = `Punto #${savedItems.filter(i => i.type === 'point').length + 1}`;
+                const pointData = { id: id, type: 'point', name: pointName, lat: lat, lng: lng };
+                
+                let m;
+                if (tempMarker) { m = tempMarker; tempMarker = null; } 
+                else { m = L.marker([lat, lng]).addTo(map); }
+                
+                // Restaurar estado visual (Confirmación)
+                m.setOpacity(1); 
+                m.setIcon(new L.Icon.Default());
+                bindSavedPointPopup(m, pointName, id);
+                
+                savedLayers[id] = m;
+                savedItems.push(pointData);
+                addItemToList(pointData);
+                updateBadge();
+                showToast('¡Punto guardado!', false);
+                m.openPopup();
+            }, 2000); // 2000ms
+        }
+
+        function enablePointDrag(id, marker) {
+            marker.closePopup();
+            marker.dragging.enable();
+            marker.setOpacity(0.7);
+            showToast("ARRASTRA el marcador a donde quieras", false);
+
+            marker.once('dragend', function(e) {
+                const newLatLng = e.target.getLatLng();
+                marker.dragging.disable();
+                marker.setOpacity(1);
+
+                const item = savedItems.find(i => i.id === id);
+                if (item) {
+                    item.lat = newLatLng.lat;
+                    item.lng = newLatLng.lng;
+                    const subTextEl = document.querySelector(`#item-${id} .font-mono`);
+                    if(subTextEl) subTextEl.textContent = `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`;
+                }
+                showToast("Nueva ubicación guardada", false);
+                marker.openPopup();
+            });
+        }
+
+        function editRouteGeometry(id) {
+            const item = savedItems.find(i => i.id === id);
+            if (!item) return;
+
+            map.closePopup();
+            if (savedLayers[id]) map.removeLayer(savedLayers[id]);
+            delete savedLayers[id];
+            
+            savedItems = savedItems.filter(i => i.id !== id);
+            const uiEl = document.getElementById(`item-${id}`);
+            if(uiEl) uiEl.remove();
+            updateBadge();
+
+            clearCurrentDrawing();
+            toggleRouteMode(true);
+
+            item.coords.forEach(coord => { addRouteNode(coord[0], coord[1]); });
+            showToast("MODO EDICIÓN: Dibuja o borra puntos", false);
+        }
+
+        function clearCurrentDrawing() {
+            if (currentRouteLine) map.removeLayer(currentRouteLine);
+            currentRouteLine = null;
+            routeNodes.forEach(node => map.removeLayer(node));
+            routeNodes = [];
+            routeCoords = [];
+            updateRouteControls();
+        }
+
+        function addItemToList(item) {
+            const listContainer = document.getElementById('places-list');
+            const emptyState = document.getElementById('empty-state');
+            if (emptyState) emptyState.style.display = 'none';
+
+            const el = document.createElement('div');
+            el.id = `item-${item.id}`;
+            el.className = "bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all group relative overflow-hidden";
+            
+            let iconSvg, subText;
+            if (item.type === 'point') {
+                iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg>`;
+                subText = `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`;
+            } else {
+                iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" /></svg>`;
+                subText = `Distancia: ${item.distance}`;
+            }
+
+            el.innerHTML = `
+                <div class="p-3 flex justify-between items-start" onclick="focusItem(${item.id})">
+                    <div class="flex items-center gap-3 overflow-hidden cursor-pointer">
+                        ${iconSvg}
+                        <div class="min-w-0">
+                            <h3 class="font-bold text-slate-700 text-sm group-hover:text-blue-600 truncate item-name">${item.name}</h3>
+                            <p class="text-xs text-slate-500 mt-0.5 font-mono truncate">${subText}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 border-t border-gray-100 flex divide-x divide-gray-200">
+                    <button onclick="triggerEditGeometry(${item.id})" class="flex-1 py-2 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition flex items-center justify-center gap-1" title="Editar Mapa">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        Editar Mapa
+                    </button>
+                    <button onclick="editItemName(${item.id})" class="flex-1 py-2 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition flex items-center justify-center gap-1" title="Renombrar">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        Nombre
+                    </button>
+                    <button onclick="deleteItem(${item.id})" class="w-10 py-2 text-xs font-medium text-slate-400 hover:text-red-600 hover:bg-red-50 transition flex items-center justify-center" title="Borrar">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                </div>
+            `;
+            listContainer.prepend(el);
+        }
+
+        function focusItem(id) {
+            if (window.getComputedStyle(document.querySelector('.md\\:hidden')).display !== 'none') switchTab('mapa');
+            const item = savedItems.find(i => i.id === id);
+            const layer = savedLayers[id];
+            
+            if (layer && item) {
+                if (item.type === 'point') { map.flyTo([item.lat, item.lng], 16); layer.openPopup(); } 
+                else { const bounds = L.polyline(item.coords).getBounds(); map.flyToBounds(bounds, { padding: [50, 50] }); layer.openPopup(); }
+            }
+        }
+
+        function editItemName(id) {
+            const item = savedItems.find(i => i.id === id);
+            if (!item) return;
+
+            const newName = prompt("Nuevo nombre:", item.name);
+            if (newName && newName.trim() !== "") {
+                item.name = newName;
+                const nameEl = document.querySelector(`#item-${id} .item-name`);
+                if (nameEl) nameEl.textContent = newName;
+
+                const layer = savedLayers[id];
+                if (layer) {
+                    if (item.type === 'point') bindSavedPointPopup(layer, newName, id);
+                    else bindSavedRoutePopup(layer, newName, item.distance, id);
+                }
+            }
+        }
+
+        function deleteItem(id) {
+            if(!confirm("¿Borrar elemento?")) return;
+            if (savedLayers[id]) { map.removeLayer(savedLayers[id]); delete savedLayers[id]; }
+            savedItems = savedItems.filter(item => item.id !== id);
+            const el = document.getElementById(`item-${id}`);
+            if (el) el.remove();
+            if (savedItems.length === 0) document.getElementById('empty-state').style.display = 'block';
+            updateBadge();
+            showToast('Eliminado', false);
+        }
+
+        function calculateDistance(coords) {
+            let total = 0;
+            for(let i=0; i<coords.length-1; i++) total += map.distance(coords[i], coords[i+1]);
+            return total;
+        }
+
+        function formatDistance(meters) {
+            return meters > 1000 ? (meters/1000).toFixed(2) + ' km' : Math.round(meters) + ' m';
+        }
+
+        // --- Toast Mejorado con Error ---
+        function showToast(msg, loading, isError = false) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = msg;
+            document.getElementById('toast-spinner').style.display = loading ? 'block' : 'none';
+            
+            if (isError) {
+                toast.classList.add('toast-error');
+                // Ocultar spinner en error
+                document.getElementById('toast-spinner').style.display = 'none';
+            } else {
+                toast.classList.remove('toast-error');
+            }
+
+            toast.classList.remove('hidden'); toast.classList.add('toast-enter');
+            
+            if (!loading) {
+                setTimeout(() => { 
+                    toast.classList.add('hidden'); 
+                    toast.classList.remove('toast-enter');
+                    // Resetear estilo
+                    setTimeout(() => toast.classList.remove('toast-error'), 300);
+                }, 3000);
+            }
+        }
+
+        function updateBadge() {
+            const badge = document.getElementById('badge-count');
+            badge.textContent = savedItems.length;
+            if(savedItems.length > 0) badge.classList.remove('hidden');
+            else badge.classList.add('hidden');
+        }
+
+        window.switchTab = function(tabName) {
+            const panelMapa = document.getElementById('panel-mapa');
+            const panelLista = document.getElementById('panel-lista');
+            const tabMapaBtn = document.getElementById('tab-mapa');
+            const tabListaBtn = document.getElementById('tab-lista');
+
+            if (tabName === 'mapa') {
+                panelMapa.classList.remove('hidden'); panelLista.classList.remove('flex'); panelLista.classList.add('hidden'); 
+                tabMapaBtn.className = "flex-1 flex flex-col items-center justify-center tab-active transition-colors";
+                tabListaBtn.className = "flex-1 flex flex-col items-center justify-center tab-inactive transition-colors";
+                setTimeout(() => map.invalidateSize(), 100);
+            } else {
+                panelMapa.classList.add('hidden'); panelLista.classList.remove('hidden'); panelLista.classList.add('flex'); 
+                tabMapaBtn.className = "flex-1 flex flex-col items-center justify-center tab-inactive transition-colors";
+                tabListaBtn.className = "flex-1 flex flex-col items-center justify-center tab-active transition-colors";
+            }
+        };
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) {
+                document.getElementById('panel-mapa').classList.remove('hidden');
+                document.getElementById('panel-lista').classList.remove('hidden');
+                document.getElementById('panel-lista').classList.add('flex');
+            } else { switchTab('mapa'); }
+        });
+    </script>
+</body>
+</html>
