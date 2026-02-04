@@ -13,12 +13,13 @@
             font-family: 'Inter', sans-serif;
             background-color: #000;
             color: #fff;
+            overflow-x: hidden; /* Evita scroll horizontal en móviles */
         }
 
-        /* Hero Fullscreen con Imagen Inmersiva */
+        /* Hero Fullscreen */
         .hero-viewport {
             position: relative;
-            height: 100vh;
+            height: 100dvh; /* dvh maneja mejor las barras de navegador móvil */
             width: 100%;
             overflow: hidden;
             display: flex;
@@ -28,39 +29,24 @@
 
         .bg-video-wrap {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
+            top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
         }
 
         .bg-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+            width: 100%; height: 100%; object-fit: cover;
             filter: brightness(0.4) contrast(1.1);
             transform: scale(1.1);
             transition: transform 10s ease-out;
         }
+        .hero-viewport:hover .bg-image { transform: scale(1); }
 
-        .hero-viewport:hover .bg-image {
-            transform: scale(1);
-        }
-
-        /* Overlay Gradiente */
         .overlay {
-            position: absolute;
-            inset: 0;
+            position: absolute; inset: 0;
             background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.8) 100%);
             z-index: 1;
         }
 
-        .content-z {
-            position: relative;
-            z-index: 10;
-            text-align: center;
-        }
+        .content-z { position: relative; z-index: 10; text-align: center; }
 
         .text-huge {
             font-size: clamp(3rem, 15vw, 12rem);
@@ -77,44 +63,31 @@
         }
 
         .btn-white {
-            background: #fff;
-            color: #000;
-            padding: 1.25rem 2.5rem;
+            background: #fff; color: #000;
+            padding: 1rem 2rem; /* Ajuste responsive padding */
             border-radius: 100px;
             font-weight: 700;
             transition: all 0.3s ease;
             text-transform: uppercase;
             letter-spacing: 0.1em;
             font-size: 0.75rem;
+            display: inline-block;
         }
-
         .btn-white:hover {
             transform: scale(1.05);
-            background: #10b981;
-            color: #fff;
+            background: #10b981; color: #fff;
         }
 
-        .scroller {
-            position: absolute;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            animation: bounce 2s infinite;
-        }
-
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% {transform: translateY(0) translateX(-50%);}
-            40% {transform: translateY(-10px) translateX(-50%);}
-            60% {transform: translateY(-5px) translateX(-50%);}
+        @media (min-width: 768px) {
+            .btn-white { padding: 1.25rem 2.5rem; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Navegación Minimalista -->
-    <nav class="fixed top-0 w-full z-[100] py-6 px-10 flex justify-between items-center glass-nav">
-        <div class="text-xl font-black tracking-tighter">BICI.SEGURA</div>
+    <!-- Navegación -->
+    <nav class="fixed top-0 w-full z-[100] py-4 md:py-6 px-6 md:px-10 flex justify-between items-center glass-nav">
+        <div class="text-lg md:text-xl font-black tracking-tighter">BICI.SEGURA</div>
         <div class="hidden md:flex space-x-8 text-[10px] font-bold tracking-[0.3em] uppercase opacity-60">
             <a href="#" class="hover:opacity-100 transition">Rutas</a>
             <a href="#" class="hover:opacity-100 transition">Dispositivo</a>
@@ -123,48 +96,54 @@
         <button class="text-[10px] font-bold tracking-widest uppercase border border-white/20 px-4 py-2 rounded-full hover:bg-white hover:text-black transition">Log In</button>
     </nav>
 
-    <!-- Hero Inmersivo -->
+    <!-- Hero -->
     <section class="hero-viewport">
         <div class="bg-video-wrap">
-            <img src="https://images.unsplash.com/photo-1471506480208-91b3a4cc78be?q=80&w=2074&auto=format&fit=crop" alt="[Ciclista en carretera nocturna]" class="bg-image">
+            <img src="https://images.unsplash.com/photo-1471506480208-91b3a4cc78be?q=80&w=2074&auto=format&fit=crop" alt="[Ciclista nocturno]" class="bg-image">
         </div>
         <div class="overlay"></div>
 
-        <div class="content-z px-6">
-            <p class="text-emerald-500 font-bold tracking-[0.5em] uppercase text-xs mb-6" data-aos="fade-down">The City is Yours</p>
-            <h1 class="text-huge mb-10" data-aos="zoom-out" data-aos-delay="200">
+        <div class="content-z px-4">
+            <p class="text-emerald-500 font-bold tracking-[0.3em] md:tracking-[0.5em] uppercase text-[10px] md:text-xs mb-4 md:mb-6" data-aos="fade-down">The City is Yours</p>
+            <h1 class="text-huge mb-8 md:mb-10" data-aos="zoom-out" data-aos-delay="200">
                 LIBERTAD<br><span class="opacity-20">SIN LÍMITES</span>
             </h1>
             <div data-aos="fade-up" data-aos-delay="400">
-                    <a href="{{ url_for('mapa') }}" class="btn-white inline-block">Empezar el Viaje</a>
-                </div>
+                <!-- Enlace dinámico a la ruta del mapa -->
+                <a href="{{ url_for('mapa') }}" class="btn-white">Empezar el Viaje</a>
             </div>
+        </div>
     </section>
 
     <!-- Sección de Concepto -->
-    <section class="py-40 px-6 max-w-7xl mx-auto">
-        <div class="grid md:grid-cols-2 gap-24 items-center">
-            <div data-aos="fade-right">
-                <h2 class="text-5xl font-bold mb-8 leading-tight">No es solo navegación.<br>Es instinto urbano.</h2>
-                <p class="text-white/40 text-xl leading-relaxed mb-10">
+    <section class="py-24 md:py-40 px-6 max-w-7xl mx-auto overflow-hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 items-center">
+            
+            <!-- Texto -->
+            <div data-aos="fade-right" class="order-2 md:order-1">
+                <h2 class="text-3xl md:text-5xl font-bold mb-6 md:mb-8 leading-tight">No es solo navegación.<br>Es instinto urbano.</h2>
+                <p class="text-white/40 text-lg md:text-xl leading-relaxed mb-8 md:mb-10">
                     BiciSegura utiliza inteligencia colectiva para mapear la ciudad. Cada bache, cada zona de riesgo y cada atajo seguro es compartido en tiempo real.
                 </p>
-                <div class="grid grid-cols-2 gap-10">
+                <div class="grid grid-cols-2 gap-6 md:gap-10">
                     <div>
-                        <h4 class="text-emerald-500 font-bold text-3xl mb-2">98%</h4>
-                        <p class="text-xs uppercase tracking-widest opacity-50">Precisión en Rutas</p>
+                        <h4 class="text-emerald-500 font-bold text-2xl md:text-3xl mb-2">98%</h4>
+                        <p class="text-[10px] md:text-xs uppercase tracking-widest opacity-50">Precisión en Rutas</p>
                     </div>
                     <div>
-                        <h4 class="text-emerald-500 font-bold text-3xl mb-2">24/7</h4>
-                        <p class="text-xs uppercase tracking-widest opacity-50">Monitoreo Activo</p>
+                        <h4 class="text-emerald-500 font-bold text-2xl md:text-3xl mb-2">24/7</h4>
+                        <p class="text-[10px] md:text-xs uppercase tracking-widest opacity-50">Monitoreo Activo</p>
                     </div>
                 </div>
             </div>
-            <div class="relative" data-aos="fade-left">
+
+            <!-- Imagen y Cita -->
+            <div class="relative order-1 md:order-2" data-aos="fade-left">
                 <div class="aspect-[4/5] rounded-3xl overflow-hidden grayscale hover:grayscale-0 transition-all duration-700 shadow-2xl">
                     <img src="https://images.unsplash.com/photo-1507035895480-2b3156c31fc8?q=80&w=2070&auto=format&fit=crop" alt="[Ciclista urbano]" class="w-full h-full object-cover">
                 </div>
-                <div class="absolute -bottom-10 -left-10 bg-emerald-600 p-8 rounded-2xl hidden md:block">
+                <!-- Cita flotante adaptable -->
+                <div class="md:absolute md:-bottom-10 md:-left-10 bg-emerald-600 p-6 md:p-8 rounded-2xl mt-4 md:mt-0 shadow-lg">
                     <p class="text-sm font-bold uppercase tracking-tighter italic">"La mejor app que he usado jamás"</p>
                 </div>
             </div>
@@ -174,18 +153,19 @@
     <!-- Pantalla de la App -->
     <section class="py-20 bg-zinc-950">
         <div class="max-w-4xl mx-auto text-center px-6">
-            <h3 class="text-3xl font-light mb-20 opacity-80" data-aos="fade-up">Interfaz táctica para el mundo real.</h3>
-            <div class="inline-block relative" data-aos="zoom-in">
-                <div class="absolute inset-0 bg-emerald-500/20 blur-[150px] rounded-full"></div>
-                <img src="https://images.unsplash.com/photo-1511994298241-608e28f14fde?q=80&w=2070&auto=format&fit=crop" alt="[Mapa en smartphone]" class="relative z-10 w-full max-w-sm mx-auto rounded-[3rem] border-[12px] border-zinc-900 shadow-2xl">
+            <h3 class="text-2xl md:text-3xl font-light mb-12 md:mb-20 opacity-80" data-aos="fade-up">Interfaz táctica para el mundo real.</h3>
+            <div class="inline-block relative w-full max-w-xs md:max-w-sm" data-aos="zoom-in">
+                <div class="absolute inset-0 bg-emerald-500/20 blur-[100px] md:blur-[150px] rounded-full"></div>
+                <!-- Imagen responsiva -->
+                <img src="https://images.unsplash.com/photo-1511994298241-608e28f14fde?q=80&w=2070&auto=format&fit=crop" alt="[Mapa en smartphone]" class="relative z-10 w-full rounded-[2rem] md:rounded-[3rem] border-[8px] md:border-[12px] border-zinc-900 shadow-2xl">
             </div>
         </div>
     </section>
 
     <!-- Footer -->
-    <footer class="py-20 border-t border-white/5 text-center">
-        <div class="mb-10 text-2xl font-black">BICI.SEGURA</div>
-        <div class="flex justify-center space-x-6 mb-10 opacity-40 text-xs font-bold tracking-widest uppercase">
+    <footer class="py-12 md:py-20 border-t border-white/5 text-center px-6">
+        <div class="mb-8 md:mb-10 text-xl md:text-2xl font-black">BICI.SEGURA</div>
+        <div class="flex flex-wrap justify-center gap-6 mb-8 md:mb-10 opacity-40 text-xs font-bold tracking-widest uppercase">
             <a href="#">Privacidad</a>
             <a href="#">Términos</a>
             <a href="#">API</a>
@@ -196,7 +176,8 @@
     <script>
         AOS.init({
             duration: 1000,
-            once: true
+            once: true,
+            offset: 50 // Activa animaciones un poco antes en móviles
         });
     </script>
 </body>
